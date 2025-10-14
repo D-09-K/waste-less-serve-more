@@ -5,7 +5,7 @@ import Footer from "@/components/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Heart, Package, Users, TrendingUp, Clock, MapPin } from "lucide-react";
+import { Heart, Package, Users, TrendingUp, Clock, MapPin, Calendar, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -18,34 +18,56 @@ interface Donation {
   pickup_location: string;
 }
 
+interface Request {
+  id: string;
+  organization_name: string;
+  people_count: number;
+  location: string;
+  needed_by: string;
+  urgency: string;
+  preferences: string | null;
+  contact: string;
+  status: string;
+  created_at: string;
+}
+
 const Dashboard = () => {
   const [donations, setDonations] = useState<Donation[]>([]);
+  const [requests, setRequests] = useState<Request[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    const fetchDonations = async () => {
+    const fetchData = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        
+
         if (!user) {
           navigate("/auth");
           return;
         }
 
-        const { data, error } = await supabase
-          .from('donations')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
+        const [donationsResult, requestsResult] = await Promise.all([
+          supabase
+            .from('donations')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false }),
+          supabase
+            .from('requests')
+            .select('*')
+            .order('created_at', { ascending: false })
+        ]);
 
-        if (error) throw error;
+        if (donationsResult.error) throw donationsResult.error;
+        if (requestsResult.error) throw requestsResult.error;
 
-        setDonations(data || []);
+        setDonations(donationsResult.data || []);
+        setRequests(requestsResult.data || []);
       } catch (error: any) {
         toast({
-          title: "Error loading donations",
+          title: "Error loading data",
           description: error.message,
           variant: "destructive",
         });
@@ -54,7 +76,7 @@ const Dashboard = () => {
       }
     };
 
-    fetchDonations();
+    fetchData();
   }, [navigate, toast]);
 
   const stats = {
@@ -65,13 +87,30 @@ const Dashboard = () => {
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Delivered":
+    switch (status.toLowerCase()) {
+      case "delivered":
         return "bg-secondary text-secondary-foreground";
-      case "Picked up":
+      case "picked up":
+      case "completed":
         return "bg-accent text-accent-foreground";
-      case "Pending":
+      case "pending":
+      case "active":
         return "bg-primary/20 text-primary";
+      default:
+        return "bg-muted text-muted-foreground";
+    }
+  };
+
+  const getUrgencyColor = (urgency: string) => {
+    switch (urgency) {
+      case "urgent":
+        return "bg-red-500 text-white";
+      case "high":
+        return "bg-orange-500 text-white";
+      case "medium":
+        return "bg-yellow-500 text-white";
+      case "low":
+        return "bg-green-500 text-white";
       default:
         return "bg-muted text-muted-foreground";
     }
@@ -205,11 +244,66 @@ const Dashboard = () => {
                 </TabsContent>
                 
                 <TabsContent value="requests" className="mt-6">
-                  <div className="text-center py-12 text-muted-foreground">
-                    <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>No food requests at the moment</p>
-                    <p className="text-sm mt-1">Check back later for new opportunities to help</p>
-                  </div>
+                  {isLoading ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <p>Loading food requests...</p>
+                    </div>
+                  ) : requests.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>No food requests at the moment</p>
+                      <p className="text-sm mt-1">Check back later for new opportunities to help</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {requests.map((request) => (
+                        <div
+                          key={request.id}
+                          className="flex items-start justify-between p-4 border border-border rounded-lg hover:shadow-soft transition-shadow"
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-start gap-3">
+                              <Users className="w-5 h-5 text-primary mt-0.5" />
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-foreground">{request.organization_name}</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2 text-sm text-muted-foreground">
+                                  <span className="flex items-center gap-1">
+                                    <Users className="w-3 h-3" />
+                                    {request.people_count} people
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <MapPin className="w-3 h-3" />
+                                    {request.location}
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <Calendar className="w-3 h-3" />
+                                    Needed by: {new Date(request.needed_by).toLocaleString()}
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <Clock className="w-3 h-3" />
+                                    {request.contact}
+                                  </span>
+                                </div>
+                                {request.preferences && (
+                                  <p className="mt-2 text-sm text-muted-foreground italic">
+                                    {request.preferences}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex flex-col gap-2 items-end ml-4">
+                            <Badge className={getUrgencyColor(request.urgency)}>
+                              {request.urgency}
+                            </Badge>
+                            <Badge className={getStatusColor(request.status)}>
+                              {request.status}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </TabsContent>
               </Tabs>
             </CardContent>

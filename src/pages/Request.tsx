@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -8,23 +9,64 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Users, MapPin, Calendar } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const Request = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Placeholder for request submission logic
-    setTimeout(() => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        toast({
+          title: "Authentication required",
+          description: "Please sign in to submit a food request.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        navigate("/auth");
+        return;
+      }
+
+      const formData = new FormData(e.currentTarget);
+
+      const { error: insertError } = await supabase.from('requests').insert({
+        user_id: user.id,
+        organization_name: formData.get('organization') as string,
+        people_count: parseInt(formData.get('people-count') as string),
+        location: formData.get('location') as string,
+        needed_by: formData.get('needed-by') as string,
+        urgency: formData.get('urgency') as string,
+        preferences: formData.get('preferences') as string || null,
+        contact: formData.get('contact') as string,
+        status: 'pending',
+      });
+
+      if (insertError) {
+        throw insertError;
+      }
+
       toast({
         title: "Request submitted successfully!",
         description: "We'll notify nearby donors. You'll hear from us soon!",
       });
+
+      navigate("/dashboard");
+    } catch (error: any) {
+      toast({
+        title: "Error submitting request",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
       setIsSubmitting(false);
-    }, 1500);
+    }
   };
 
   return (
