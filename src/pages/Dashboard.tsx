@@ -1,45 +1,68 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Heart, Package, Users, TrendingUp, Clock, MapPin } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+
+interface Donation {
+  id: string;
+  food_type: string;
+  quantity: number;
+  status: string;
+  created_at: string;
+  pickup_location: string;
+}
 
 const Dashboard = () => {
-  // Mock data - will be replaced with real data from backend
-  const stats = {
-    mealsSaved: 127,
-    activeDonations: 3,
-    co2Reduced: "45kg",
-    impactScore: 89,
-  };
+  const [donations, setDonations] = useState<Donation[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
-  const recentDonations = [
-    {
-      id: 1,
-      foodType: "Fresh vegetables & fruits",
-      quantity: 25,
-      status: "Picked up",
-      date: "2025-01-08",
-      location: "Mumbai Central",
-    },
-    {
-      id: 2,
-      foodType: "Cooked rice & curry",
-      quantity: 50,
-      status: "Pending",
-      date: "2025-01-07",
-      location: "Andheri West",
-    },
-    {
-      id: 3,
-      foodType: "Packed meals",
-      quantity: 30,
-      status: "Delivered",
-      date: "2025-01-06",
-      location: "Bandra",
-    },
-  ];
+  useEffect(() => {
+    const fetchDonations = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          navigate("/auth");
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from('donations')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        setDonations(data || []);
+      } catch (error: any) {
+        toast({
+          title: "Error loading donations",
+          description: error.message,
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDonations();
+  }, [navigate, toast]);
+
+  const stats = {
+    mealsSaved: donations.reduce((acc, d) => acc + d.quantity, 0),
+    activeDonations: donations.filter(d => d.status === 'active').length,
+    co2Reduced: `${Math.round(donations.reduce((acc, d) => acc + d.quantity, 0) * 0.35)}kg`,
+    impactScore: Math.min(89, donations.length * 10),
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -133,40 +156,52 @@ const Dashboard = () => {
                 </TabsList>
                 
                 <TabsContent value="donations" className="mt-6">
-                  <div className="space-y-4">
-                    {recentDonations.map((donation) => (
-                      <div
-                        key={donation.id}
-                        className="flex items-start justify-between p-4 border border-border rounded-lg hover:shadow-soft transition-shadow"
-                      >
-                        <div className="flex-1">
-                          <div className="flex items-start gap-3">
-                            <Package className="w-5 h-5 text-primary mt-0.5" />
-                            <div>
-                              <h4 className="font-semibold text-foreground">{donation.foodType}</h4>
-                              <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                                <span className="flex items-center gap-1">
-                                  <Users className="w-3 h-3" />
-                                  {donation.quantity} servings
-                                </span>
-                                <span className="flex items-center gap-1">
-                                  <MapPin className="w-3 h-3" />
-                                  {donation.location}
-                                </span>
-                                <span className="flex items-center gap-1">
-                                  <Clock className="w-3 h-3" />
-                                  {donation.date}
-                                </span>
+                  {isLoading ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <p>Loading your donations...</p>
+                    </div>
+                  ) : donations.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>No donations yet</p>
+                      <p className="text-sm mt-1">Start making a difference by donating food!</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {donations.map((donation) => (
+                        <div
+                          key={donation.id}
+                          className="flex items-start justify-between p-4 border border-border rounded-lg hover:shadow-soft transition-shadow"
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-start gap-3">
+                              <Package className="w-5 h-5 text-primary mt-0.5" />
+                              <div>
+                                <h4 className="font-semibold text-foreground">{donation.food_type}</h4>
+                                <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                                  <span className="flex items-center gap-1">
+                                    <Users className="w-3 h-3" />
+                                    {donation.quantity} servings
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <MapPin className="w-3 h-3" />
+                                    {donation.pickup_location}
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <Clock className="w-3 h-3" />
+                                    {new Date(donation.created_at).toLocaleDateString()}
+                                  </span>
+                                </div>
                               </div>
                             </div>
                           </div>
+                          <Badge className={getStatusColor(donation.status)}>
+                            {donation.status}
+                          </Badge>
                         </div>
-                        <Badge className={getStatusColor(donation.status)}>
-                          {donation.status}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </TabsContent>
                 
                 <TabsContent value="requests" className="mt-6">

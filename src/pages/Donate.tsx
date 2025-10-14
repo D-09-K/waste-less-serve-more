@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -7,24 +8,115 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, MapPin, Clock, Package } from "lucide-react";
+import { Upload, MapPin, Clock, Package, X } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const Donate = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0]);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      setSelectedFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const removeFile = () => {
+    setSelectedFile(null);
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Placeholder for donation submission logic
-    setTimeout(() => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast({
+          title: "Authentication required",
+          description: "Please sign in to donate food.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        navigate("/auth");
+        return;
+      }
+
+      const formData = new FormData(e.currentTarget);
+      let imageUrl = null;
+
+      // Upload image if selected
+      if (selectedFile) {
+        const fileExt = selectedFile.name.split('.').pop();
+        const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError, data } = await supabase.storage
+          .from('food-images')
+          .upload(fileName, selectedFile);
+
+        if (uploadError) {
+          throw uploadError;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('food-images')
+          .getPublicUrl(fileName);
+        
+        imageUrl = publicUrl;
+      }
+
+      // Insert donation
+      const { error: insertError } = await supabase.from('donations').insert({
+        user_id: user.id,
+        food_type: formData.get('food-type') as string,
+        quantity: parseInt(formData.get('quantity') as string),
+        pickup_location: formData.get('pickup-location') as string,
+        expiry: formData.get('expiry') as string,
+        description: formData.get('description') as string || null,
+        image_url: imageUrl,
+        status: 'active',
+      });
+
+      if (insertError) {
+        throw insertError;
+      }
+
       toast({
         title: "Donation listed successfully!",
         description: "NGOs in your area will be notified. Thank you for making a difference!",
       });
+      
+      navigate("/dashboard");
+    } catch (error: any) {
+      toast({
+        title: "Error submitting donation",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
       setIsSubmitting(false);
-    }, 1500);
+    }
   };
 
   return (
@@ -109,15 +201,46 @@ const Donate = () => {
 
                   <div className="space-y-2">
                     <Label htmlFor="image">Food Image (Optional)</Label>
-                    <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer">
-                      <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground mb-1">Click to upload or drag and drop</p>
-                      <p className="text-xs text-muted-foreground">PNG, JPG up to 5MB</p>
+                    <div 
+                      className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${
+                        isDragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary'
+                      }`}
+                      onDrop={handleDrop}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onClick={() => document.getElementById('image')?.click()}
+                    >
+                      {selectedFile ? (
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Upload className="w-5 h-5 text-primary" />
+                            <span className="text-sm">{selectedFile.name}</span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeFile();
+                            }}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                          <p className="text-sm text-muted-foreground mb-1">Click to upload or drag and drop</p>
+                          <p className="text-xs text-muted-foreground">PNG, JPG up to 5MB</p>
+                        </>
+                      )}
                       <Input 
                         id="image" 
                         type="file" 
                         className="hidden" 
                         accept="image/*"
+                        onChange={handleFileChange}
                       />
                     </div>
                   </div>
