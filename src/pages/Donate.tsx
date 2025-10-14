@@ -144,7 +144,8 @@ const Donate = () => {
                   <div className="space-y-2">
                     <Label htmlFor="food-type">Food Type</Label>
                     <Input 
-                      id="food-type" 
+                      id="food-type"
+                      name="food-type"
                       placeholder="e.g., Cooked rice, Fresh vegetables, Packed meals" 
                       required 
                     />
@@ -155,7 +156,8 @@ const Donate = () => {
                     <div className="relative">
                       <Package className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input 
-                        id="quantity" 
+                        id="quantity"
+                        name="quantity"
                         type="number" 
                         className="pl-10"
                         placeholder="Number of people this can feed" 
@@ -169,7 +171,8 @@ const Donate = () => {
                     <div className="relative">
                       <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input 
-                        id="pickup-location" 
+                        id="pickup-location"
+                        name="pickup-location"
                         className="pl-10"
                         placeholder="Full address for pickup" 
                         required 
@@ -182,7 +185,8 @@ const Donate = () => {
                     <div className="relative">
                       <Clock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input 
-                        id="expiry" 
+                        id="expiry"
+                        name="expiry"
                         type="datetime-local" 
                         className="pl-10"
                         required 
@@ -193,7 +197,8 @@ const Donate = () => {
                   <div className="space-y-2">
                     <Label htmlFor="description">Additional Details</Label>
                     <Textarea 
-                      id="description" 
+                      id="description"
+                      name="description"
                       placeholder="Any special instructions, dietary information, or storage requirements..."
                       rows={4}
                     />
