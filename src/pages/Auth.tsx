@@ -58,16 +58,31 @@ const Auth = () => {
     });
     
     if (error) {
-      toast({
-        title: "Sign in failed",
-        description: error.message,
-        variant: "destructive",
-      });
+      const message = error.message?.toLowerCase?.() || '';
+      if (message.includes('email not confirmed')) {
+        const { error: resendError } = await supabase.auth.resend({
+          type: 'signup',
+          email,
+        });
+        toast({
+          title: resendError ? 'Email confirmation required' : 'Confirm your email',
+          description: resendError
+            ? 'Please confirm your email before signing in.'
+            : 'We sent you a new confirmation link. Please confirm to continue.',
+          variant: resendError ? 'destructive' : undefined,
+        });
+      } else {
+        toast({
+          title: 'Sign in failed',
+          description: error.message,
+          variant: 'destructive',
+        });
+      }
       setIsLoading(false);
     } else {
       toast({
-        title: "Sign in successful!",
-        description: "Welcome back to WasteLess ServeMore",
+        title: 'Sign in successful!',
+        description: 'Welcome back to WasteLess ServeMore',
       });
     }
   };
