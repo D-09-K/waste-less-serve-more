@@ -63,7 +63,20 @@ const Donate = () => {
         return;
       }
 
-      const formData = new FormData(e.currentTarget);
+      // const formData = new FormData();
+      // const form = e.currentTarget;
+      
+          // Manually append form fields to FormData
+          //   formData.append('food-type', (form.elements.namedItem('food-type') as HTMLInputElement).value);
+          //  formData.append('quantity', (form.elements.namedItem('quantity') as HTMLInputElement).value);
+          //   formData.append('pickup-location', (form.elements.namedItem('pickup-location') as HTMLInputElement).value);
+          //   formData.append('expiry', (form.elements.namedItem('expiry') as HTMLInputElement).value);
+          //   formData.append('description', (form.elements.namedItem('description') as HTMLTextAreaElement).value);
+        const formElement = e.target as HTMLFormElement;
+          const formData = new FormData(formElement);
+
+ 
+ 
       let imageUrl = null;
 
       // Upload image if selected

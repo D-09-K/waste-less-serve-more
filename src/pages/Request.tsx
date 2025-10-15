@@ -33,15 +33,15 @@ const Request = () => {
         navigate("/auth");
         return;
       }
-
-      const formData = new FormData(e.currentTarget);
+      const formElement = e.target as HTMLFormElement;
+      const formData = new FormData(formElement);
 
       const { error: insertError } = await supabase.from('requests').insert({
         user_id: user.id,
-        organization_name: formData.get('organization') as string,
-        people_count: parseInt(formData.get('people-count') as string),
+        organization_name: formData.get('organization_name') as string,
+        people_count: parseInt(formData.get('people_count') as string),
         location: formData.get('location') as string,
-        needed_by: formData.get('needed-by') as string,
+        needed_by: formData.get('needed_by') as string,
         urgency: formData.get('urgency') as string,
         preferences: formData.get('preferences') as string || null,
         contact: formData.get('contact') as string,
@@ -97,6 +97,7 @@ const Request = () => {
                       id="organization" 
                       placeholder="Your NGO/Shelter name" 
                       required 
+                      name="organization_name"
                     />
                   </div>
 
@@ -106,10 +107,12 @@ const Request = () => {
                       <Users className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input 
                         id="people-count" 
+                        name="people_count"
                         type="number" 
                         className="pl-10"
                         placeholder="How many people need food?" 
                         required 
+                        
                       />
                     </div>
                   </div>
@@ -122,7 +125,8 @@ const Request = () => {
                         id="location" 
                         className="pl-10"
                         placeholder="Full address for delivery" 
-                        required 
+                        required
+                        name="location"
                       />
                     </div>
                   </div>
@@ -136,6 +140,7 @@ const Request = () => {
                         type="datetime-local" 
                         className="pl-10"
                         required 
+                        name="needed_by"
                       />
                     </div>
                   </div>
@@ -146,6 +151,7 @@ const Request = () => {
                       id="urgency" 
                       className="w-full h-10 px-3 rounded-md border border-input bg-background"
                       required
+                      name="urgency"
                     >
                       <option value="">Select urgency level...</option>
                       <option value="low">Low - Within a week</option>
@@ -161,6 +167,7 @@ const Request = () => {
                       id="preferences" 
                       placeholder="Any dietary requirements, preferences, or restrictions..."
                       rows={4}
+                      name="preferences"
                     />
                   </div>
 
@@ -171,6 +178,7 @@ const Request = () => {
                       type="tel"
                       placeholder="+91 9876543210" 
                       required 
+                      name="contact"
                     />
                   </div>
 

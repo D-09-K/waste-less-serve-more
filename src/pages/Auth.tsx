@@ -153,6 +153,7 @@ const Auth = () => {
                     <Label htmlFor="signin-email">Email</Label>
                     <Input 
                       id="signin-email" 
+                      name="sign-in-email"
                       type="email" 
                       placeholder="you@example.com" 
                       required 
@@ -164,6 +165,7 @@ const Auth = () => {
                       id="signin-password" 
                       type="password" 
                       placeholder="••••••••" 
+                      name="sign-in-password"
                       required 
                     />
                   </div>
@@ -185,6 +187,7 @@ const Auth = () => {
                       id="signup-name" 
                       type="text" 
                       placeholder="Your name" 
+                      name="signup-name"
                       required 
                     />
                   </div>
@@ -194,6 +197,7 @@ const Auth = () => {
                       id="signup-email" 
                       type="email" 
                       placeholder="you@example.com" 
+                      name="signup-email"
                       required 
                     />
                   </div>
@@ -202,6 +206,7 @@ const Auth = () => {
                     <Input 
                       id="signup-password" 
                       type="password" 
+                      name="signup-password"
                       placeholder="••••••••" 
                       required 
                     />
